@@ -94,13 +94,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="text-center text-xs text-gray-500">
           <p>🔒 Protected access for team members only</p>
         </div>
-
-        {/* Bottom Install Button */}
-        <div className="text-center pt-4 border-t border-gray-200">
-          <p className="text-sm text-gray-600 mb-3">For the best experience:</p>
-          <InstallButton variant="secondary" size="md" className="w-full justify-center" />
-          <p className="text-xs text-gray-500 mt-2">Install this app on your phone for easy access!</p>
-        </div>
       </div>
     </div>
   );
