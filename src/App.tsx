@@ -38,7 +38,11 @@ export default function App() {
 
   // Handle online/offline detection
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      // Auto-sync queued logs when coming back online
+      syncQueuedLogs();
+    };
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
@@ -49,6 +53,37 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Sync queued logs when back online
+  async function syncQueuedLogs() {
+    const queuedLogs = JSON.parse(localStorage.getItem('queuedLogs') || '[]');
+    if (queuedLogs.length === 0) return;
+
+    let syncedCount = 0;
+    for (const logData of queuedLogs) {
+      try {
+        await postLog(logData);
+        syncedCount++;
+      } catch (error) {
+        console.warn('Failed to sync log:', error);
+        break; // Stop on first failure to preserve order
+      }
+    }
+
+    if (syncedCount > 0) {
+      // Remove synced logs from queue
+      const remainingLogs = queuedLogs.slice(syncedCount);
+      localStorage.setItem('queuedLogs', JSON.stringify(remainingLogs));
+      
+      setToast({
+        message: `🔄 Synced ${syncedCount} offline log${syncedCount !== 1 ? 's' : ''} to Google Sheets`,
+        type: 'success',
+      });
+
+      // Refresh to get latest data
+      refresh();
+    }
+  }
 
   // Show install prompt after user has been using the app
   useEffect(() => {
@@ -83,11 +118,25 @@ export default function App() {
       const data = await getData();
       setBuildings(data.buildings);
       setLogs(data.logs);
+      // Cache data locally for offline use
+      localStorage.setItem('cachedBuildings', JSON.stringify(data.buildings));
+      localStorage.setItem('cachedLogs', JSON.stringify(data.logs));
     } catch (err) {
-      console.warn('Failed to load from API, using local data:', err);
-      setBuildings(buildingsData as Building[]);
-      setLogs([]);
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.warn('Failed to load from API, using local/cached data:', err);
+      
+      // Try to load cached data first, then fall back to default buildings
+      const cachedBuildings = localStorage.getItem('cachedBuildings');
+      const cachedLogs = localStorage.getItem('cachedLogs');
+      
+      if (cachedBuildings && cachedLogs) {
+        setBuildings(JSON.parse(cachedBuildings));
+        setLogs(JSON.parse(cachedLogs));
+        setError('Using cached data - connect to internet to sync latest changes');
+      } else {
+        setBuildings(buildingsData as Building[]);
+        setLogs([]);
+        setError('Offline mode - showing default buildings only');
+      }
     } finally { 
       setLoading(false); 
     }
@@ -126,7 +175,7 @@ export default function App() {
   async function handleLog(b: Building, entrance: number, underConstruction: boolean = false) {
     try {
       const pos = await getHighAccuracyPosition();
-      await postLog({
+      const logData = {
         buildingId: b.id,
         buildingName: b.name,
         entrance,
@@ -135,8 +184,8 @@ export default function App() {
         accuracy: pos.accuracy,
         userId: currentUsername,
         underConstruction,
-      });
-      
+      };
+
       // optimistic UI: synthesize a log row so status flips to Done immediately
       const newRow: LogRow = {
         timestamp: new Date().toISOString(),
@@ -151,12 +200,29 @@ export default function App() {
       };
       setLogs(prev => [newRow, ...prev]);
 
-      const constructionText = underConstruction ? " (🚧 Under Construction)" : "";
-      const accuracyText = pos.accuracy <= 10 ? "📍" : pos.accuracy <= 50 ? "📌" : "📍⚠️";
-      setToast({
-        message: `${accuracyText} Successfully logged ${b.name} entrance ${entrance}${constructionText}! (±${pos.accuracy.toFixed(1)}m)`,
-        type: 'success',
-      });
+      try {
+        // Try to send to server
+        await postLog(logData);
+        
+        const constructionText = underConstruction ? " (🚧 Under Construction)" : "";
+        const accuracyText = pos.accuracy <= 10 ? "📍" : pos.accuracy <= 50 ? "📌" : "📍⚠️";
+        setToast({
+          message: `${accuracyText} Successfully logged ${b.name} entrance ${entrance}${constructionText}! (±${pos.accuracy.toFixed(1)}m)`,
+          type: 'success',
+        });
+      } catch (apiError) {
+        // If offline, queue for later sync
+        const queuedLogs = JSON.parse(localStorage.getItem('queuedLogs') || '[]');
+        queuedLogs.push({ ...logData, timestamp: newRow.timestamp });
+        localStorage.setItem('queuedLogs', JSON.stringify(queuedLogs));
+        
+        const constructionText = underConstruction ? " (🚧 Under Construction)" : "";
+        const accuracyText = pos.accuracy <= 10 ? "📍" : pos.accuracy <= 50 ? "📌" : "📍⚠️";
+        setToast({
+          message: `${accuracyText} Logged ${b.name} entrance ${entrance}${constructionText} offline (±${pos.accuracy.toFixed(1)}m) - will sync when online`,
+          type: 'success',
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to log location';
       setToast({
@@ -303,6 +369,19 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Pending sync indicator */}
+      {(() => {
+        const queuedLogs = JSON.parse(localStorage.getItem('queuedLogs') || '[]');
+        return queuedLogs.length > 0 && (
+          <div className="fixed top-4 left-4 z-50 bg-blue-100 text-blue-800 px-3 py-2 rounded-md shadow-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🔄</span>
+              <span className="text-sm font-medium">{queuedLogs.length} log{queuedLogs.length !== 1 ? 's' : ''} pending sync</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast notification */}
       {toast && (
