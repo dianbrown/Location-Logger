@@ -32,49 +32,61 @@ export default function BuildingRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 border-b py-2">
-      <div className="flex-1">
-        <div className="font-medium flex items-center gap-2">
+    <div className="border-b py-4">
+      {/* Building name and status - centered at top */}
+      <div className="text-center mb-3">
+        <div className="font-medium text-lg flex items-center justify-center gap-2">
           {building.name}
           {hasConstruction && <span className="text-orange-600 text-sm">🚧</span>}
         </div>
-        <div className="text-xs text-gray-500 mb-1">{building.id}</div>
+        <div className="text-xs text-gray-500 mb-2">{building.id}</div>
         <StatusPill done={isDone} />
       </div>
       
-      <div className="flex items-center gap-2">
-        <select
-          value={entrance}
-          onChange={(e) => setEntrance(Number(e.target.value))}
-          className="border rounded px-2 py-1"
-          aria-label="Entrance"
-        >
-          {Array.from({ length: max }, (_, i) => i + 1).map(n => (
-            <option key={n} value={n}>Entrance {n}</option>
-          ))}
-        </select>
+      {/* Controls - stacked vertically on mobile, horizontal on larger screens */}
+      <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-center sm:gap-4">
+        {/* Entrance selection */}
+        <div className="flex items-center justify-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Entrance:</label>
+          <select
+            value={entrance}
+            onChange={(e) => setEntrance(Number(e.target.value))}
+            className="border rounded px-3 py-1.5 text-sm min-w-[120px]"
+            aria-label="Entrance"
+          >
+            {Array.from({ length: max }, (_, i) => i + 1).map(n => (
+              <option key={n} value={n}>Entrance {n}</option>
+            ))}
+          </select>
+        </div>
         
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={underConstruction}
-            onChange={(e) => setUnderConstruction(e.target.checked)}
-            className="rounded"
-          />
-          <span className={underConstruction ? "text-orange-600 font-medium" : "text-gray-600"}>
-            🚧 Construction
-          </span>
-        </label>
+        {/* Construction checkbox */}
+        <div className="flex items-center justify-center">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={underConstruction}
+              onChange={(e) => setUnderConstruction(e.target.checked)}
+              className="rounded"
+            />
+            <span className={underConstruction ? "text-orange-600 font-medium" : "text-gray-600"}>
+              🚧 Under Construction
+            </span>
+          </label>
+        </div>
         
-        <button
-          className={`rounded text-white px-3 py-1 disabled:opacity-60 ${
-            underConstruction ? 'bg-orange-500 hover:bg-orange-600' : 'bg-black hover:bg-gray-800'
-          }`}
-          disabled={loading}
-          onClick={handleLog}
-        >
-          {loading ? "Logging..." : "Log"}
-        </button>
+        {/* Log button - full width on mobile */}
+        <div className="flex justify-center">
+          <button
+            className={`rounded text-white px-6 py-2 font-medium disabled:opacity-60 w-full sm:w-auto ${
+              underConstruction ? 'bg-orange-500 hover:bg-orange-600' : 'bg-black hover:bg-gray-800'
+            }`}
+            disabled={loading}
+            onClick={handleLog}
+          >
+            {loading ? "Logging..." : "📍 Log Location"}
+          </button>
+        </div>
       </div>
     </div>
   );

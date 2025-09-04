@@ -490,7 +490,7 @@ export default function App() {
         </div>
         
         <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <div className="space-y-2 p-3">
+          <div className="space-y-0">
             {filtered.map(b => (
               <BuildingRow
                 key={b.id}
@@ -503,7 +503,7 @@ export default function App() {
             ))}
             
             {filtered.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 px-4">
                 <p>No buildings found matching "{q}"</p>
                 <p className="text-sm mt-1">Try a different search term or add a custom building</p>
               </div>
@@ -511,7 +511,7 @@ export default function App() {
             
             {/* Scroll indicator at bottom */}
             {filtered.length > 10 && (
-              <div className="text-center py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50">
+              <div className="text-center py-3 text-xs text-gray-400 border-t border-gray-100 bg-gray-50">
                 📜 {filtered.length} buildings total • Scroll for more
               </div>
             )}
