@@ -17,11 +17,12 @@
   {
     "id": "STU-01",
     "name": "Student Center",
-    "entrancesMax": 6
+    "entrancesMax": 5
   },
   {
     "id": "SCI-01",
-    "name": "Science Building"
+    "name": "Science Building",
+    "entrancesMax": 5
   },
   {
     "id": "ADM-01",
@@ -35,6 +36,7 @@
   },
   {
     "id": "ART-01",
-    "name": "Arts & Humanities Hall"
+    "name": "Arts & Humanities Hall",
+    "entrancesMax": 5
   }
 ]

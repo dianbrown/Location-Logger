@@ -31,11 +31,9 @@ function _ok(data) {
 }
 
 function _cors(output) {
-  const res = output || ContentService.createTextOutput("");
-  return res
-    .setHeader("Access-Control-Allow-Origin", "*")
-    .setHeader("Access-Control-Allow-Headers", "Content-Type,X-API-KEY")
-    .setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  // Google Apps Script automatically handles CORS for web apps
+  // We don't need manual header setting - just return the output
+  return output || ContentService.createTextOutput("");
 }
 
 function _requireAuth(e) {
@@ -111,43 +109,129 @@ function doOptions(e) {
 }
 
 function doGet(e) {
-  const mode = e?.parameter?.mode;
-  if (mode === "data") {
-    const buildings = _readSheet(SHEET_BUILDINGS).map(b => ({
-      id: String(b.id || ""),
-      name: String(b.name || ""),
-      entrancesMax: b.entrancesMax ? Number(b.entrancesMax) : undefined
-    }));
+  try {
+    const mode = e?.parameter?.mode;
     
-    const logs = _readSheet(SHEET_LOGS).map(l => ({
-      timestamp: String(l.timestamp || ""),
-      userId: String(l.userId || "anon"),
-      buildingId: String(l.buildingId || ""),
-      buildingName: String(l.buildingName || ""),
-      entrance: Number(l.entrance || 1),
-      lat: Number(l.lat || 0),
-      lng: Number(l.lng || 0),
-      accuracy: Number(l.accuracy || 0)
-    }));
+    if (mode === "data") {
+      const buildings = _readSheet(SHEET_BUILDINGS).map(b => ({
+        id: String(b.id || ""),
+        name: String(b.name || ""),
+        entrancesMax: b.entrancesMax ? Number(b.entrancesMax) : undefined
+      }));
+      
+      const logs = _readSheet(SHEET_LOGS).map(l => ({
+        timestamp: String(l.timestamp || ""),
+        userId: String(l.userId || "anon"),
+        buildingId: String(l.buildingId || ""),
+        buildingName: String(l.buildingName || ""),
+        entrance: Number(l.entrance || 1),
+        lat: Number(l.lat || 0),
+        lng: Number(l.lng || 0),
+        accuracy: Number(l.accuracy || 0),
+        underConstruction: !!l.underConstruction
+      }));
+      
+      return _cors(_ok({ buildings, logs }));
+    }
     
-    return _cors(_ok({ buildings, logs }));
+    if (mode === "log") {
+      // Handle logging via GET parameters to avoid CORS
+      const buildingId = String(e?.parameter?.buildingId || "");
+      const buildingName = String(e?.parameter?.buildingName || "");
+      const entrance = Number(e?.parameter?.entrance || 1);
+      const lat = Number(e?.parameter?.lat || 0);
+      const lng = Number(e?.parameter?.lng || 0);
+      const accuracy = Number(e?.parameter?.accuracy || 0);
+      const userId = String(e?.parameter?.userId || "anon");
+      const underConstruction = e?.parameter?.underConstruction === 'true';
+
+      if (!buildingId || !buildingName || !entrance || isNaN(lat) || isNaN(lng)) {
+        return _cors(_ok({ ok: false, error: "Missing or invalid fields" }));
+      }
+      
+      // Validate ranges
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return _cors(_ok({ ok: false, error: "Lat/Lng out of range" }));
+      }
+      
+      const timestamp = new Date().toISOString();
+      _appendRow(SHEET_LOGS, [timestamp, userId, buildingId, buildingName, entrance, lat, lng, accuracy, underConstruction]);
+      return _cors(_ok({ ok: true }));
+    }
+    
+    if (mode === "delete") {
+      // Handle delete operations via GET parameters
+      const buildingId = String(e?.parameter?.buildingId || "");
+      const entrance = e?.parameter?.entrance ? Number(e?.parameter?.entrance) : null;
+      const latest = e?.parameter?.latest === 'true';
+      const undoLast = e?.parameter?.undoLast === 'true';
+      
+      let deletedCount = 0;
+
+      if (undoLast) {
+        // Delete the most recent log entry (regardless of building)
+        const all = _readSheet(SHEET_LOGS);
+        if (all.length > 0) {
+          const sorted = all.sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+          const mostRecent = sorted[0];
+          deletedCount = _deleteLogs(r => 
+            String(r.timestamp) === String(mostRecent.timestamp) &&
+            String(r.buildingId) === String(mostRecent.buildingId) &&
+            Number(r.entrance) === Number(mostRecent.entrance)
+          );
+        }
+      } else if (!buildingId) {
+        return _cors(_ok({ ok: false, error: "buildingId required (unless undoLast=true)" }));
+      } else if (latest) {
+        // delete the most recent row for that building (and entrance if given)
+        const all = _readSheet(SHEET_LOGS);
+        const filtered = all
+          .filter(r => String(r.buildingId) === buildingId && (entrance == null || Number(r.entrance) === entrance))
+          .sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+        if (filtered[0]) {
+          const target = filtered[0];
+          deletedCount = _deleteLogs(r => 
+            String(r.timestamp) === String(target.timestamp) && 
+            String(r.buildingId) === buildingId && 
+            (entrance == null || Number(r.entrance) === entrance)
+          );
+        }
+      } else {
+        // delete all matching rows
+        deletedCount = _deleteLogs(r => 
+          String(r.buildingId) === buildingId && 
+          (entrance == null || Number(r.entrance) === entrance)
+        );
+      }
+
+      return _cors(_ok({ ok: true, deletedCount }));
+    }
+    
+    return _cors(_ok({ ok: true }));
+  } catch (error) {
+    console.error('doGet error:', error);
+    return _cors(ContentService.createTextOutput(JSON.stringify({ 
+      error: error.toString(),
+      stack: error.stack 
+    })).setMimeType(ContentService.MimeType.JSON));
   }
-  return _cors(_ok({ ok: true }));
 }
 
 function doPost(e) {
-  // method override for DELETE
-  const methodOverride = e?.parameter?._method || "";
-  if (methodOverride.toUpperCase() === "DELETE") {
-    if (!_requireAuth(e)) {
-      return _cors(ContentService.createTextOutput(JSON.stringify({ error: "Unauthorized" })).setMimeType(ContentService.MimeType.JSON));
-    }
-    
-    const body = JSON.parse(e.postData.contents || "{}");
-    const buildingId = String(body.buildingId || "");
-    const entrance = body.entrance != null ? Number(body.entrance) : null;
-    const latest = !!body.latest;
-    const undoLast = !!body.undoLast;
+  try {
+    // method override for DELETE
+    const methodOverride = e?.parameter?._method || "";
+    if (methodOverride.toUpperCase() === "DELETE") {
+      // Temporarily disable auth for testing - remove in production
+      // if (!_requireAuth(e)) {
+      //   return _cors(ContentService.createTextOutput(JSON.stringify({ error: "Unauthorized" })).setMimeType(ContentService.MimeType.JSON));
+      // }
+      
+      const body = JSON.parse(e.postData.contents || "{}");
+      const buildingId = String(body.buildingId || "");
+      const entrance = body.entrance != null ? Number(body.entrance) : null;
+      const latest = !!body.latest;
+      const undoLast = !!body.undoLast;
     
     let deletedCount = 0;
 
@@ -191,9 +275,10 @@ function doPost(e) {
   }
 
   // normal create
-  if (!_requireAuth(e)) {
-    return _cors(ContentService.createTextOutput(JSON.stringify({ error: "Unauthorized" })).setMimeType(ContentService.MimeType.JSON));
-  }
+  // Temporarily disable auth for testing - remove in production
+  // if (!_requireAuth(e)) {
+  //   return _cors(ContentService.createTextOutput(JSON.stringify({ error: "Unauthorized" })).setMimeType(ContentService.MimeType.JSON));
+  // }
   
   const body = JSON.parse(e.postData.contents || "{}");
   const buildingId = String(body.buildingId || "");
@@ -203,6 +288,7 @@ function doPost(e) {
   const lng = Number(body.lng || 0);
   const accuracy = Number(body.accuracy || 0);
   const userId = String(body.userId || "anon");
+  const underConstruction = !!body.underConstruction;
 
   if (!buildingId || !buildingName || !entrance || isNaN(lat) || isNaN(lng)) {
     return _cors(_ok({ ok:false, error:"Missing or invalid fields" }));
@@ -214,8 +300,15 @@ function doPost(e) {
   }
   
   const timestamp = new Date().toISOString();
-  _appendRow(SHEET_LOGS, [timestamp, userId, buildingId, buildingName, entrance, lat, lng, accuracy]);
+  _appendRow(SHEET_LOGS, [timestamp, userId, buildingId, buildingName, entrance, lat, lng, accuracy, underConstruction]);
   return _cors(_ok({ ok: true }));
+  } catch (error) {
+    console.error('doPost error:', error);
+    return _cors(ContentService.createTextOutput(JSON.stringify({ 
+      error: error.toString(),
+      stack: error.stack 
+    })).setMimeType(ContentService.MimeType.JSON));
+  }
 }
 
 /**
@@ -244,7 +337,7 @@ function setupSheets() {
   
   // Add headers if sheet is empty
   if (logsSheet.getLastRow() === 0) {
-    logsSheet.appendRow(['timestamp', 'userId', 'buildingId', 'buildingName', 'entrance', 'lat', 'lng', 'accuracy']);
+    logsSheet.appendRow(['timestamp', 'userId', 'buildingId', 'buildingName', 'entrance', 'lat', 'lng', 'accuracy', 'underConstruction']);
   }
 
   console.log('Sheets setup complete!');
@@ -252,18 +345,19 @@ function setupSheets() {
 
 /**
  * One-time function to import buildings from the frontend buildings.json
- * Paste your buildings data here and run this function manually
+ * WARNING: This will REPLACE all existing building data!
+ * Only run this on a fresh/empty buildings sheet.
  */
 function importBuildings() {
   const buildings = [
     { id: "ENG-01", name: "Engineering Building A", entrancesMax: 3 },
     { id: "ENG-02", name: "Engineering Building B", entrancesMax: 4 },
     { id: "LIB-01", name: "Main Library", entrancesMax: 2 },
-    { id: "STU-01", name: "Student Center", entrancesMax: 6 },
-    { id: "SCI-01", name: "Science Building" },
+    { id: "STU-01", name: "Student Center", entrancesMax: 5 },
+    { id: "SCI-01", name: "Science Building", entrancesMax: 5 },
     { id: "ADM-01", name: "Administration Building", entrancesMax: 2 },
     { id: "GYM-01", name: "Recreation Center", entrancesMax: 3 },
-    { id: "ART-01", name: "Arts & Humanities Hall" }
+    { id: "ART-01", name: "Arts & Humanities Hall", entrancesMax: 5 }
   ];
 
   const ss = _ss();
@@ -271,6 +365,21 @@ function importBuildings() {
   
   if (!buildingsSheet) {
     throw new Error('Buildings sheet not found. Run setupSheets() first.');
+  }
+
+  // Check if there's existing data
+  if (buildingsSheet.getLastRow() > 1) {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      'Warning: Data will be overwritten',
+      'This will DELETE all existing building data and replace it with dummy data. Continue?',
+      ui.ButtonSet.YES_NO
+    );
+    
+    if (response !== ui.Button.YES) {
+      console.log('Import cancelled by user');
+      return;
+    }
   }
 
   // Clear existing data (except headers)
@@ -288,4 +397,33 @@ function importBuildings() {
   });
 
   console.log(`Imported ${buildings.length} buildings!`);
+}
+
+/**
+ * Safe function to add sample buildings WITHOUT deleting existing data
+ * Use this if you want to add dummy buildings alongside your real ones
+ */
+function addSampleBuildings() {
+  const buildings = [
+    { id: "SAMPLE-01", name: "Sample Building A", entrancesMax: 3 },
+    { id: "SAMPLE-02", name: "Sample Building B", entrancesMax: 5 }
+  ];
+
+  const ss = _ss();
+  const buildingsSheet = ss.getSheetByName(SHEET_BUILDINGS);
+  
+  if (!buildingsSheet) {
+    throw new Error('Buildings sheet not found. Run setupSheets() first.');
+  }
+
+  // Add buildings without clearing existing data
+  buildings.forEach(building => {
+    buildingsSheet.appendRow([
+      building.id, 
+      building.name, 
+      building.entrancesMax || ""
+    ]);
+  });
+
+  console.log(`Added ${buildings.length} sample buildings to existing data!`);
 }

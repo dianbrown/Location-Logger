@@ -1,11 +1,12 @@
 import { useState } from "react";
 
 interface LoginScreenProps {
-  onLogin: (password: string) => boolean;
+  onLogin: (password: string, username: string) => boolean;
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +16,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setError("");
 
     try {
-      const success = onLogin(password);
+      const success = onLogin(password, username.trim() || "anon");
       if (!success) {
         setError("Incorrect password. Please try again.");
         setPassword("");
@@ -32,10 +33,26 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       <div className="max-w-md w-full space-y-8 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Campus Entrance Logger</h1>
-          <p className="text-gray-600">Enter team password to continue</p>
+          <p className="text-gray-600">Enter your name and team password to continue</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="username" className="sr-only">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Your name (optional)"
+              disabled={loading}
+            />
+          </div>
+
           <div>
             <label htmlFor="password" className="sr-only">
               Team Password

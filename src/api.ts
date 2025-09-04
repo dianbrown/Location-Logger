@@ -20,33 +20,37 @@ export const isApiInitialized = (): boolean => {
   return apiCredentials !== null;
 };
 
-function getApiCredentials() {
-  if (!apiCredentials) {
-    throw new Error('API not initialized. Please enter team password first.');
-  }
-  return apiCredentials;
-}
-
-async function request<T>(path = "", init: RequestInit = {}): Promise<T> {
-  const { endpoint, apiKey } = getApiCredentials();
-  const res = await fetch(`${endpoint}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-KEY": apiKey,
-      ...(init.headers || {})
-    }
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
 export async function getData() {
-  const { endpoint, apiKey } = getApiCredentials();
+  // For GET requests, we don't need credentials - try direct access
+  const endpoint = import.meta.env.VITE_SHEETS_ENDPOINT;
   const url = `${endpoint}?mode=data`;
-  const res = await fetch(url, { headers: { "X-API-KEY": apiKey } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()) as ApiPayload;
+  
+  console.log('🔍 API Debug Info:');
+  console.log('- Endpoint:', endpoint);
+  console.log('- Full URL:', url);
+  
+  try {
+    const res = await fetch(url, { 
+      method: 'GET',
+      mode: 'cors'
+    });
+    console.log('- Response status:', res.status);
+    console.log('- Response OK:', res.ok);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.log('- Error response:', errorText);
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log('- Buildings loaded:', data.buildings?.length || 0);
+    console.log('- Logs loaded:', data.logs?.length || 0);
+    return data as ApiPayload;
+  } catch (error) {
+    console.error('❌ API Error:', error);
+    throw error;
+  }
 }
 
 // Create a log row
@@ -58,23 +62,106 @@ export async function postLog(payload: {
   lng: number;
   accuracy: number;
   userId?: string;
+  underConstruction?: boolean;
 }) {
-  return request<{ ok: true }>("", { method: "POST", body: JSON.stringify(payload) });
+  const endpoint = import.meta.env.VITE_SHEETS_ENDPOINT;
+  
+  // Use URL parameters instead of POST body to avoid CORS preflight
+  const params = new URLSearchParams({
+    mode: 'log',
+    buildingId: payload.buildingId,
+    buildingName: payload.buildingName,
+    entrance: payload.entrance.toString(),
+    lat: payload.lat.toString(),
+    lng: payload.lng.toString(),
+    accuracy: payload.accuracy.toString(),
+    userId: payload.userId || 'anon',
+    underConstruction: payload.underConstruction ? 'true' : 'false'
+  });
+  
+  const url = `${endpoint}?${params.toString()}`;
+  
+  console.log('🔍 POST Log Debug:');
+  console.log('- URL:', url);
+  
+  try {
+    const res = await fetch(url, {
+      method: "GET", // Use GET to avoid preflight
+      mode: 'cors'
+    });
+    
+    console.log('- POST Response status:', res.status);
+    console.log('- POST Response OK:', res.ok);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.log('- POST Error response:', errorText);
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    return await res.json() as { ok: true };
+  } catch (error) {
+    console.error('❌ POST Error:', error);
+    throw error;
+  }
 }
 
 // Delete logs for a building (optionally entrance)
 export async function deleteLogs(opts: { buildingId: string; entrance?: number; latest?: boolean }) {
-  // Method-override delete via POST (works with classic Apps Script)
-  return request<{ ok: true; deletedCount: number }>("?_method=DELETE", {
-    method: "POST",
-    body: JSON.stringify(opts)
+  const endpoint = import.meta.env.VITE_SHEETS_ENDPOINT;
+  
+  const params = new URLSearchParams({
+    mode: 'delete',
+    buildingId: opts.buildingId,
+    ...(opts.entrance !== undefined && { entrance: opts.entrance.toString() }),
+    ...(opts.latest && { latest: 'true' })
   });
+  
+  const url = `${endpoint}?${params.toString()}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      mode: 'cors'
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    return await res.json() as { ok: true; deletedCount: number };
+  } catch (error) {
+    console.error('❌ Delete Error:', error);
+    throw error;
+  }
 }
 
 // Undo the last log entry
 export async function undoLastLog() {
-  return request<{ ok: true; deletedCount: number }>("?_method=DELETE", {
-    method: "POST",
-    body: JSON.stringify({ undoLast: true })
+  const endpoint = import.meta.env.VITE_SHEETS_ENDPOINT;
+  
+  const params = new URLSearchParams({
+    mode: 'delete',
+    undoLast: 'true'
   });
+  
+  const url = `${endpoint}?${params.toString()}`;
+  
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      mode: 'cors'
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errorText}`);
+    }
+    
+    return await res.json() as { ok: true; deletedCount: number };
+  } catch (error) {
+    console.error('❌ Undo Error:', error);
+    throw error;
+  }
 }

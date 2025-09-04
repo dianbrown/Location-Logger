@@ -13,6 +13,7 @@ export type LogRow = {
   lat: number;
   lng: number;
   accuracy: number;
+  underConstruction: boolean;
 };
 
 export type ApiPayload = {
