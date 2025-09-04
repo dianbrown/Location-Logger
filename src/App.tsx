@@ -21,6 +21,7 @@ export default function App() {
   const [customUnderConstruction, setCustomUnderConstruction] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("anon");
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Check if already authenticated on mount
   useEffect(() => {
@@ -33,6 +34,20 @@ export default function App() {
     } else {
       setLoading(false);
     }
+  }, []);
+
+  // Handle online/offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   // Show install prompt after user has been using the app
@@ -279,6 +294,16 @@ export default function App() {
 
   return (
     <div className="max-w-3xl mx-auto p-4">
+      {/* Offline indicator */}
+      {!isOnline && (
+        <div className="fixed top-4 left-4 z-50 bg-orange-100 text-orange-800 px-4 py-2 rounded-md shadow-lg border border-orange-200">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">📡</span>
+            <span className="text-sm font-medium">Offline Mode</span>
+          </div>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
