@@ -1,0 +1,40 @@
+[
+  {
+    "id": "ENG-01",
+    "name": "Engineering Building A",
+    "entrancesMax": 3
+  },
+  {
+    "id": "ENG-02", 
+    "name": "Engineering Building B",
+    "entrancesMax": 4
+  },
+  {
+    "id": "LIB-01",
+    "name": "Main Library",
+    "entrancesMax": 2
+  },
+  {
+    "id": "STU-01",
+    "name": "Student Center",
+    "entrancesMax": 6
+  },
+  {
+    "id": "SCI-01",
+    "name": "Science Building"
+  },
+  {
+    "id": "ADM-01",
+    "name": "Administration Building",
+    "entrancesMax": 2
+  },
+  {
+    "id": "GYM-01",
+    "name": "Recreation Center",
+    "entrancesMax": 3
+  },
+  {
+    "id": "ART-01",
+    "name": "Arts & Humanities Hall"
+  }
+]
