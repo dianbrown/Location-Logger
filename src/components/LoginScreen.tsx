@@ -1,4 +1,5 @@
 import { useState } from "react";
+import InstallButton from "./InstallButton";
 
 interface LoginScreenProps {
   onLogin: (password: string, username: string) => boolean;
@@ -33,7 +34,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       <div className="max-w-md w-full space-y-8 p-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Campus Entrance Logger</h1>
-          <p className="text-gray-600">Enter your name and team password to continue</p>
+          <p className="text-gray-600 mb-4">Enter your name and team password to continue</p>
+          
+          {/* Install Button */}
+          <div className="mb-6">
+            <InstallButton variant="primary" size="sm" />
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -87,6 +93,13 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
         <div className="text-center text-xs text-gray-500">
           <p>🔒 Protected access for team members only</p>
+        </div>
+
+        {/* Bottom Install Button */}
+        <div className="text-center pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600 mb-3">For the best experience:</p>
+          <InstallButton variant="secondary" size="md" className="w-full justify-center" />
+          <p className="text-xs text-gray-500 mt-2">Install this app on your phone for easy access!</p>
         </div>
       </div>
     </div>

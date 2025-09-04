@@ -5,6 +5,7 @@ import type { Building, LogRow } from "./types";
 import BuildingRow from "./components/BuildingRow";
 import AdminTools from "./components/AdminTools";
 import LoginScreen from "./components/LoginScreen";
+import InstallPrompt from "./components/InstallPrompt";
 import buildingsData from "./buildings.json";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customBuildingName, setCustomBuildingName] = useState("");
   const [customUnderConstruction, setCustomUnderConstruction] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("anon");
 
   // Check if already authenticated on mount
@@ -32,6 +34,19 @@ export default function App() {
       setLoading(false);
     }
   }, []);
+
+  // Show install prompt after user has been using the app
+  useEffect(() => {
+    if (isAuthenticated && logs.length >= 3) {
+      const hasSeenPrompt = localStorage.getItem('hasSeenInstallPrompt');
+      if (!hasSeenPrompt) {
+        setTimeout(() => {
+          setShowInstallPrompt(true);
+          localStorage.setItem('hasSeenInstallPrompt', 'true');
+        }, 2000);
+      }
+    }
+  }, [isAuthenticated, logs.length]);
 
   const handleLogin = (password: string, username: string): boolean => {
     const success = initializeApi(password);
@@ -482,6 +497,11 @@ export default function App() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Install Prompt */}
+      {showInstallPrompt && (
+        <InstallPrompt onClose={() => setShowInstallPrompt(false)} />
       )}
     </div>
   );
