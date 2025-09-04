@@ -12,7 +12,12 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
-      // Remove the sw.js from input - it should be copied as a static asset
+      output: {
+        // Ensure JS files have proper extensions
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
     }
   },
   publicDir: 'public'
