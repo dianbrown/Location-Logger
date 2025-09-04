@@ -9,11 +9,11 @@ export default defineConfig({
     port: 3000,
   },
   build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
     rollupOptions: {
-      input: {
-        main: './index.html',
-        sw: './public/sw.js'
-      }
+      // Remove the sw.js from input - it should be copied as a static asset
     }
-  }
+  },
+  publicDir: 'public'
 })
