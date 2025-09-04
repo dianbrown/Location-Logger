@@ -14,8 +14,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Ensure JS files have proper extensions
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].mjs',
+        chunkFileNames: 'assets/[name]-[hash].mjs',
         assetFileNames: (assetInfo) => {
           // Ensure manifest.json goes to root
           if (assetInfo.name === 'manifest.json') {
