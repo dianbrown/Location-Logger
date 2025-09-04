@@ -16,7 +16,13 @@ export default defineConfig({
         // Ensure JS files have proper extensions
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]'
+        assetFileNames: (assetInfo) => {
+          // Ensure manifest.json goes to root
+          if (assetInfo.name === 'manifest.json') {
+            return '[name].[ext]'
+          }
+          return 'assets/[name]-[hash].[ext]'
+        }
       }
     }
   },
