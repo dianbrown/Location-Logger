@@ -297,22 +297,6 @@ export default function App() {
     }
   }
 
-  async function removeAllForBuilding(buildingId: string) {
-    try {
-      await deleteLogs({ buildingId });
-      await refresh();
-      setToast({
-        message: 'Successfully deleted all logs for building',
-        type: 'success',
-      });
-    } catch (err) {
-      setToast({
-        message: 'Failed to delete logs',
-        type: 'error',
-      });
-    }
-  }
-
   async function removeForEntrance(buildingId: string, entrance: number) {
     try {
       await deleteLogs({ buildingId, entrance });
@@ -331,10 +315,10 @@ export default function App() {
 
   async function handleUndoLast() {
     try {
-      const result = await undoLastLog();
+      const result = await undoLastLog(currentUsername);
       await refresh();
       setToast({
-        message: `Successfully undid last log (${result.deletedCount} entry deleted)`,
+        message: `Successfully undid your last log (${result.deletedCount} entry deleted)`,
         type: 'success',
       });
     } catch (err) {
@@ -520,7 +504,6 @@ export default function App() {
         <h2 className="font-semibold mb-2">Admin Tools</h2>
         <AdminTools 
           buildings={buildings} 
-          onDeleteAll={removeAllForBuilding} 
           onDeleteEntrance={removeForEntrance}
           onUndoLast={handleUndoLast}
         />

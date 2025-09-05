@@ -3,30 +3,18 @@ import type { Building } from "../types";
 
 interface AdminToolsProps {
   buildings: Building[];
-  onDeleteAll: (id: string) => Promise<void>;
   onDeleteEntrance: (id: string, entrance: number) => Promise<void>;
   onUndoLast: () => Promise<void>;
 }
 
 export default function AdminTools({
   buildings, 
-  onDeleteAll, 
   onDeleteEntrance,
   onUndoLast
 }: AdminToolsProps) {
   const [sel, setSel] = useState("");
   const [entr, setEntr] = useState(1);
   const [loading, setLoading] = useState(false);
-
-  const handleDeleteAll = async () => {
-    if (!sel) return;
-    setLoading(true);
-    try {
-      await onDeleteAll(sel);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteEntrance = async () => {
     if (!sel) return;
@@ -75,14 +63,6 @@ export default function AdminTools({
             </option>
           ))}
         </select>
-        
-        <button 
-          className="border rounded px-3 py-1 disabled:opacity-60" 
-          disabled={!sel || loading} 
-          onClick={handleDeleteAll}
-        >
-          {loading ? "Deleting..." : "Delete ALL logs"}
-        </button>
         
         <input 
           type="number" 

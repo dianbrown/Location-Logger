@@ -165,20 +165,47 @@ function doGet(e) {
       const entrance = e?.parameter?.entrance ? Number(e?.parameter?.entrance) : null;
       const latest = e?.parameter?.latest === 'true';
       const undoLast = e?.parameter?.undoLast === 'true';
+      const userId = String(e?.parameter?.userId || "anon");
       
       let deletedCount = 0;
 
       if (undoLast) {
-        // Delete the most recent log entry (regardless of building)
+        // Delete the most recent log entry for the specific user
         const all = _readSheet(SHEET_LOGS);
-        if (all.length > 0) {
-          const sorted = all.sort((a,b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+        console.log('Total logs found:', all.length);
+        
+        // Filter logs for this specific user
+        const userLogs = all.filter(r => String(r.userId || 'anon') === String(userId));
+        console.log('User logs found for userId', userId, ':', userLogs.length);
+        
+        if (userLogs.length > 0) {
+          // Sort by timestamp descending to get most recent first
+          const sorted = userLogs.sort((a,b) => {
+            const timeA = new Date(String(a.timestamp || '')).getTime();
+            const timeB = new Date(String(b.timestamp || '')).getTime();
+            return timeB - timeA; // Descending order
+          });
+          
           const mostRecent = sorted[0];
-          deletedCount = _deleteLogs(r => 
-            String(r.timestamp) === String(mostRecent.timestamp) &&
-            String(r.buildingId) === String(mostRecent.buildingId) &&
-            Number(r.entrance) === Number(mostRecent.entrance)
-          );
+          console.log('Most recent log for user:', mostRecent);
+          
+          // Delete the exact matching row
+          deletedCount = _deleteLogs(r => {
+            const matchTimestamp = String(r.timestamp || '') === String(mostRecent.timestamp || '');
+            const matchUser = String(r.userId || 'anon') === String(userId);
+            const matchBuilding = String(r.buildingId || '') === String(mostRecent.buildingId || '');
+            const matchEntrance = Number(r.entrance || 0) === Number(mostRecent.entrance || 0);
+            
+            const isMatch = matchTimestamp && matchUser && matchBuilding && matchEntrance;
+            if (isMatch) {
+              console.log('Deleting log:', r);
+            }
+            return isMatch;
+          });
+          
+          console.log('Deleted count:', deletedCount);
+        } else {
+          console.log('No logs found for user:', userId);
         }
       } else if (!buildingId) {
         return _cors(_ok({ ok: false, error: "buildingId required (unless undoLast=true)" }));

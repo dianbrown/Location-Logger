@@ -137,16 +137,21 @@ export async function deleteLogs(opts: { buildingId: string; entrance?: number; 
   }
 }
 
-// Undo the last log entry
-export async function undoLastLog() {
+// Undo the last log entry for a specific user
+export async function undoLastLog(userId?: string) {
   const endpoint = import.meta.env.VITE_SHEETS_ENDPOINT;
   
   const params = new URLSearchParams({
     mode: 'delete',
-    undoLast: 'true'
+    undoLast: 'true',
+    userId: userId || 'anon'
   });
   
   const url = `${endpoint}?${params.toString()}`;
+  
+  console.log('🔍 Undo Debug:');
+  console.log('- UserId:', userId);
+  console.log('- URL:', url);
   
   try {
     const res = await fetch(url, {
@@ -156,10 +161,13 @@ export async function undoLastLog() {
     
     if (!res.ok) {
       const errorText = await res.text();
+      console.log('- Undo Error response:', errorText);
       throw new Error(`HTTP ${res.status}: ${errorText}`);
     }
     
-    return await res.json() as { ok: true; deletedCount: number };
+    const data = await res.json();
+    console.log('- Undo Response:', data);
+    return data as { ok: true; deletedCount: number };
   } catch (error) {
     console.error('❌ Undo Error:', error);
     throw error;
