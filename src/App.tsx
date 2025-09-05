@@ -403,8 +403,11 @@ export default function App() {
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-bold">Campus Entrance Logger</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">
-            👤 {currentUsername}
+          <span className="text-sm text-gray-600 flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {currentUsername}
           </span>
           <button
             onClick={() => {
@@ -413,9 +416,12 @@ export default function App() {
               sessionStorage.removeItem('auth');
               sessionStorage.removeItem('username');
             }}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
           >
-            🔒 Logout
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
           </button>
         </div>
       </div>
@@ -477,16 +483,6 @@ export default function App() {
           <h2 className="text-lg font-semibold">
             Buildings ({filtered.length}{buildings.length !== filtered.length ? ` of ${buildings.length}` : ""})
           </h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            {filtered.length > 10 && (
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                📜 Scroll to see all
-              </span>
-            )}
-            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-              ✅ {doneSet.size} completed
-            </span>
-          </div>
         </div>
         
         <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
